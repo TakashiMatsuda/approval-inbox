@@ -1,0 +1,14 @@
+name = "approval-inbox"
+main = "src/worker/worker.ts"
+compatibility_date = "2026-08-01"
+
+[[durable_objects.bindings]]
+name = "INBOX"
+class_name = "InboxDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["InboxDO"]
+
+# Secrets (set via `wrangler secret put`): API_KEY, SIGNING_SECRET
+# Optional vars: NOTIFY_URL, BASE_URL

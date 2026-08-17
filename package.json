@@ -1,0 +1,13 @@
+{
+  "name": "approval-inbox",
+  "version": "0.1.0",
+  "description": "Human approval API for AI agents — pause, notify a human, resume on tap. Zero runtime dependencies.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/node/server.js",
+    "test": "npm run build && node --test dist/test/e2e.test.js"
+  },
+  "engines": { "node": ">=22.5" }
+}
