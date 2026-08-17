@@ -31,6 +31,20 @@ const html = (body: string, status = 200) =>
 const RISKS: Risk[] = ['low', 'medium', 'high'];
 const MAX_TIMEOUT = 86400;
 
+/** Cookie holding the API key for the human web inbox (set on first `?key=` visit). */
+const INBOX_COOKIE = 'ai_key';
+const INBOX_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
+
+function readCookie(req: Request, name: string): string {
+  for (const part of (req.headers.get('cookie') ?? '').split(';')) {
+    const eq = part.indexOf('=');
+    if (eq < 0) continue;
+    if (part.slice(0, eq).trim() !== name) continue;
+    try { return decodeURIComponent(part.slice(eq + 1).trim()); } catch { return ''; }
+  }
+  return '';
+}
+
 async function notify(env: Env, approval: Approval, phase: 'created' | 'decided'): Promise<void> {
   if (!env.NOTIFY_URL) return;
   const base = env.BASE_URL ?? '';
@@ -165,17 +179,35 @@ export function createApp(sqlFactory: () => SqlLike, env: Env) {
 
     // ---- GET /inbox — human web UI ----
     if (req.method === 'GET' && path === '/inbox') {
-      if (!authed) return html(resultPage('Unauthorized', '?key=YOUR_API_KEY を付けてアクセスしてください。'), 401);
+      // First visit uses ?key=...; store it in an HttpOnly cookie and redirect so the key
+      // stops travelling in the URL (browser history, referrers, the 10s auto-refresh).
+      if (keyParam) {
+        if (!authed) return html(resultPage('Unauthorized', 'API key が違います。'), 401);
+        return new Response(null, {
+          status: 302,
+          headers: {
+            location: '/inbox',
+            'set-cookie': `${INBOX_COOKIE}=${encodeURIComponent(env.API_KEY)}; Path=/inbox; Max-Age=${INBOX_COOKIE_MAX_AGE}` +
+              `; HttpOnly; SameSite=Lax${url.protocol === 'https:' ? '; Secure' : ''}`,
+          },
+        });
+      }
+      // Afterwards the cookie authenticates. Bearer still works for scripted access.
+      // The cookie is deliberately accepted for this read-only page only — never for the
+      // JSON API or /d/:id decisions, which would make them CSRF-able.
+      if (!authed && !timingSafeEq(readCookie(req, INBOX_COOKIE), env.API_KEY)) {
+        return html(resultPage('Unauthorized', '?key=YOUR_API_KEY を付けてアクセスしてください。'), 401);
+      }
       const pending = store.list('pending');
       const recent = store.list('all', 20).filter(a => a.status !== 'pending');
-      return html(await inboxPage(pending, recent, env.API_KEY, async (a) => ({
+      return html(await inboxPage(pending, recent, async (a) => ({
         approve: await signToken(env.SIGNING_SECRET, a.id, 'approve'),
         deny: await signToken(env.SIGNING_SECRET, a.id, 'deny'),
       })));
     }
 
     if (req.method === 'GET' && path === '/') {
-      return json({ service: 'approval-inbox', docs: 'https://github.com/TBD/approval-inbox', endpoints: ['/v1/approvals', '/inbox'] });
+      return json({ service: 'approval-inbox', docs: 'https://github.com/TakashiMatsuda/approval-inbox', endpoints: ['/v1/approvals', '/inbox'] });
     }
     return json({ error: 'not_found' }, 404);
   };

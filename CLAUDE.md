@@ -12,13 +12,16 @@ Human approval API for AI agents (pause → notify human → tap approve/deny �
 
 ## Build & test
 ```
-npm run build   # tsc (Node >=22.5 for node:sqlite)
+npm run build   # tsc (Node 24+; 22.5–23.3 need --experimental-sqlite for node:sqlite)
 npm test        # builds + node --test dist/test/e2e.test.js  (8 tests, all must pass)
 ```
+CI (`.github/workflows/ci.yml`) runs `npm ci && npm test` on Node 24 for every push to main and every PR. The README badge points at it — keep it green.
 The Claude Code hook integration (`integrations/claude-code/approval-gate.mjs`) was verified end-to-end: dangerous command → blocks → API approval → outputs permissionDecision allow. Test it manually per README if you touch it.
 
 ## Current status (2026-08-17)
 Deployed to production: https://approval-inbox.mazda-misc.workers.dev (account: mazda.misc@gmail.com). `wrangler deploy` succeeded and DO `storage.sql` param binding was verified on real workerd via a full curl create → signed-link approve → poll → audit-log → double-decide-409 cycle. API_KEY / SIGNING_SECRET secrets are set via `wrangler secret put`.
+
+Public-launch prep done 2026-08-17: CI + badge, "Deploy to Cloudflare" button (README quickstart is now self-host-first), `examples/demo.sh` (60s curl-only loop), SECURITY.md, and `/inbox` key-in-cookie. The `/inbox` cookie (`ai_key`, HttpOnly, Path=/inbox) is accepted **only** for that read-only page — never for the JSON API or `/d/:id`, or decisions become CSRF-able.
 
 ## Near-term roadmap (in priority order)
 1. ~~Verify + fix Worker/DO entry on real Cloudflare (first `wrangler deploy`)~~ done 2026-08-17

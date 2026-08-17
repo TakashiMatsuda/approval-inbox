@@ -40,7 +40,7 @@ export function resultPage(title: string, message: string): string {
 }
 
 export async function inboxPage(
-  pending: Approval[], recent: Approval[], apiKey: string,
+  pending: Approval[], recent: Approval[],
   tokens: (a: Approval) => Promise<{ approve: string; deny: string }>,
 ): Promise<string> {
   const pendingCards = await Promise.all(pending.map(async a => {

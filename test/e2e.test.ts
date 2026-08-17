@@ -135,12 +135,25 @@ test('list + audit events', async () => {
   assert.deepEqual(names, ['created', 'denied']);
 });
 
-test('inbox UI renders pending approvals', async () => {
+test('inbox UI: ?key= sets a cookie, then the cookie authenticates', async () => {
   await api('/v1/approvals', { method: 'POST', body: JSON.stringify({ action: 'show-me-in-inbox', risk: 'low' }) });
-  const r = await fetch(`${BASE}/inbox?key=${KEY}`);
-  assert.equal(r.status, 200);
-  const body = await r.text();
-  assert.match(body, /show-me-in-inbox/);
-  const noAuth = await fetch(`${BASE}/inbox`);
-  assert.equal(noAuth.status, 401);
+
+  // first visit: ?key= → cookie + redirect to a key-less URL
+  const first = await fetch(`${BASE}/inbox?key=${KEY}`, { redirect: 'manual' });
+  assert.equal(first.status, 302);
+  assert.equal(first.headers.get('location'), '/inbox');
+  const setCookie = first.headers.get('set-cookie') ?? '';
+  assert.match(setCookie, /^ai_key=/);
+  assert.match(setCookie, /HttpOnly/);
+  assert.match(setCookie, /SameSite=Lax/);
+
+  // subsequent visits: no key in the URL
+  const cookie = setCookie.split(';')[0];
+  const withCookie = await fetch(`${BASE}/inbox`, { headers: { cookie } });
+  assert.equal(withCookie.status, 200);
+  assert.match(await withCookie.text(), /show-me-in-inbox/);
+
+  assert.equal((await fetch(`${BASE}/inbox`)).status, 401);
+  assert.equal((await fetch(`${BASE}/inbox`, { headers: { cookie: 'ai_key=wrong' } })).status, 401);
+  assert.equal((await fetch(`${BASE}/inbox?key=wrong`, { redirect: 'manual' })).status, 401);
 });
