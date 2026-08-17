@@ -2,3 +2,6 @@ node_modules/
 dist/
 *.db
 .keys/
+
+# Internal planning docs — never publish to the public repo
+north_star.md
