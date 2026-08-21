@@ -5,3 +5,7 @@ dist/
 
 # Internal planning docs — never publish to the public repo
 north_star.md
+
+# Local Claude Code / orchestration setup — machine-specific, not for the public repo
+.claude/
+ORCH_PROBE.md
