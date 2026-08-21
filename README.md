@@ -88,11 +88,19 @@ A webhook that hangs or fails never breaks the API: notification errors are swal
 
 ### ntfy — one tap, no browser (recommended)
 
-1. Install the [ntfy](https://ntfy.sh) app (iOS / Android / desktop) and subscribe to a topic. **Pick an unguessable name** — `approvals-7f3a9c2e1b`, not `approvals`. On public ntfy.sh the topic name is the only thing standing between the world and your notifications.
+1. Install the [ntfy](https://ntfy.sh) app (iOS / Android / desktop) and subscribe to a topic.
+   **Generate an unguessable name — never copy one out of a README, including this one.**
+   On public ntfy.sh the topic name is the only thing standing between the world and your
+   notifications:
+
+   ```bash
+   echo "approvals-$(openssl rand -hex 5)"   # → approvals-…  (never plain "approvals")
+   ```
+
 2. Set it on the Worker. Because that topic name is password-like, store it as a secret rather than committing it to `wrangler.toml`:
 
    ```bash
-   wrangler secret put NOTIFY_URL     # → https://ntfy.sh/approvals-7f3a9c2e1b
+   wrangler secret put NOTIFY_URL     # → https://ntfy.sh/<the topic you just generated>
    ```
 
 3. Trigger something dangerous. The notification carries **✓ Approve** and **✕ Deny**; ntfy's server performs the decision `POST` itself, so the agent resumes without you opening anything.
