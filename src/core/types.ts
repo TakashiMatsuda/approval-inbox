@@ -32,6 +32,9 @@ export interface SqlLike {
 export interface Env {
   API_KEY: string;          // bearer for agent + admin endpoints
   SIGNING_SECRET: string;   // HMAC for decision links
-  NOTIFY_URL?: string;      // optional webhook (Slack-compatible or ntfy)
+  NOTIFY_URL?: string;      // optional webhook: ntfy topic, Slack/Discord webhook, or any URL
+  NOTIFY_FORMAT?: string;   // 'ntfy' | 'slack' | 'discord' | 'json' — auto-detected from NOTIFY_URL
+  NOTIFY_AUTH?: string;     // Authorization header for the webhook (e.g. a protected ntfy topic)
+  NOTIFY_ONE_TAP?: string;  // 'off' disables approve/deny buttons inside the notification (ntfy)
   BASE_URL?: string;        // public base URL used in links
 }

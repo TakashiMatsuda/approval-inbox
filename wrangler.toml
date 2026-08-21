@@ -11,4 +11,6 @@ tag = "v1"
 new_sqlite_classes = ["InboxDO"]
 
 # Secrets (set via `wrangler secret put`): API_KEY, SIGNING_SECRET
-# Optional vars: NOTIFY_URL, BASE_URL
+# Optional vars: BASE_URL, NOTIFY_FORMAT, NOTIFY_ONE_TAP
+# Optional secrets: NOTIFY_URL (an ntfy topic name is password-like), NOTIFY_AUTH
+# See "Mobile notifications" in the README.

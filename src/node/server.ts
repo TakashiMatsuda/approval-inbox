@@ -32,6 +32,9 @@ const env: Env = {
   API_KEY: process.env.API_KEY ?? 'dev-key-change-me',
   SIGNING_SECRET: process.env.SIGNING_SECRET ?? 'dev-secret-change-me',
   NOTIFY_URL: process.env.NOTIFY_URL,
+  NOTIFY_FORMAT: process.env.NOTIFY_FORMAT,
+  NOTIFY_AUTH: process.env.NOTIFY_AUTH,
+  NOTIFY_ONE_TAP: process.env.NOTIFY_ONE_TAP,
   BASE_URL: process.env.BASE_URL,
 };
 

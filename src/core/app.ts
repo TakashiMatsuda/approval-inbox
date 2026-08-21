@@ -1,5 +1,6 @@
 import type { Approval, Env, Risk, SqlLike } from './types.js';
 import { Store } from './store.js';
+import { notify, type DecisionLinks } from './notify.js';
 import { inboxPage, decisionPage, resultPage } from './ui.js';
 
 const enc = new TextEncoder();
@@ -45,24 +46,6 @@ function readCookie(req: Request, name: string): string {
   return '';
 }
 
-async function notify(env: Env, approval: Approval, phase: 'created' | 'decided'): Promise<void> {
-  if (!env.NOTIFY_URL) return;
-  const base = env.BASE_URL ?? '';
-  const text = phase === 'created'
-    ? `🔔 Approval requested [${approval.risk}] ${approval.action}` +
-      (approval.detail ? `\n${approval.detail}` : '') +
-      `\nDecide: ${base}/d/${approval.id}?t=${await signToken((env as Env).SIGNING_SECRET, approval.id, 'approve')}`
-    : `${approval.status === 'approved' ? '✅ approved' : '⛔ ' + approval.status} — ${approval.action}` +
-      (approval.reason ? `\nreason: ${approval.reason}` : '');
-  try {
-    await fetch(env.NOTIFY_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text, approval }),
-    });
-  } catch { /* notification failure must not break the API */ }
-}
-
 export function createApp(sqlFactory: () => SqlLike, env: Env) {
   const store = new Store(sqlFactory());
 
@@ -73,6 +56,15 @@ export function createApp(sqlFactory: () => SqlLike, env: Env) {
     const keyParam = url.searchParams.get('key') ?? '';
     const authed = timingSafeEq(bearer || keyParam, env.API_KEY);
     const base = env.BASE_URL ?? `${url.protocol}//${url.host}`;
+
+    /** Links for notifications; `base` is request-derived, so they work without BASE_URL set. */
+    const decisionLinks = async (a: Approval): Promise<DecisionLinks> => {
+      const [approveToken, denyToken] = await Promise.all([
+        signToken(env.SIGNING_SECRET, a.id, 'approve'),
+        signToken(env.SIGNING_SECRET, a.id, 'deny'),
+      ]);
+      return { page: `${base}/d/${a.id}?t=${approveToken}`, post: `${base}/d/${a.id}`, approveToken, denyToken };
+    };
 
     const serialize = async (a: Approval) => ({
       ...a,
@@ -101,7 +93,7 @@ export function createApp(sqlFactory: () => SqlLike, env: Env) {
         created_at: now,
         expires_at: now + timeout * 1000,
       });
-      await notify(env, approval, 'created');
+      await notify(env, approval, 'created', await decisionLinks(approval));
       return json(await serialize(approval), 201);
     }
 
@@ -142,7 +134,7 @@ export function createApp(sqlFactory: () => SqlLike, env: Env) {
         const r = store.decide(id, decision, typeof body.by === 'string' ? body.by : 'api',
           typeof body.reason === 'string' ? body.reason : null);
         if (!r.ok) return json({ error: r.error }, r.error === 'not_found' ? 404 : 409);
-        await notify(env, r.approval, 'decided');
+        await notify(env, r.approval, 'decided', await decisionLinks(r.approval));
         return json(await serialize(r.approval));
       }
     }
@@ -172,7 +164,7 @@ export function createApp(sqlFactory: () => SqlLike, env: Env) {
         const r = store.decide(id, act === 'approve' ? 'approved' : 'denied', 'link',
           String(form.get('reason') ?? '') || null);
         if (!r.ok) return html(resultPage('決定済み', `この承認は既に処理されています(${r.error})。`), 409);
-        await notify(env, r.approval, 'decided');
+        await notify(env, r.approval, 'decided', await decisionLinks(r.approval));
         return html(resultPage(act === 'approve' ? '✅ 承認しました' : '⛔ 却下しました', r.approval.action));
       }
     }

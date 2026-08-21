@@ -63,6 +63,8 @@ compared in constant time. Signed links are single-purpose (approve or deny) and
 naturally single-use, since the state machine rejects a second decision with 409.
 Decisions are never accepted from a cookie — the `/inbox` session cookie authenticates
 that read-only page and nothing else, so a cross-site request can't approve anything.
+Deciding is `POST`-only, so a link that gets followed unattended (an unfurler, a preview
+bot, a security scanner) cannot approve anything by fetching it.
 Approvals expire on their own (`timeout_seconds`, max 24h), and every state change
 writes an append-only `events` row.
 
@@ -75,5 +77,11 @@ writes an append-only `events` row.
   outstanding links; pending approvals stay decidable through the API and `/inbox`)
 - keep `timeout_seconds` as short as the workflow tolerates — an expired request
   fails closed
+- if you set `NOTIFY_URL`, treat the destination as an approval channel: anyone who can
+  read that ntfy topic or chat channel can act on the request. Use an unguessable topic
+  name, prefer an access-token-protected or self-hosted topic (`NOTIFY_AUTH`), and set
+  `NOTIFY_ONE_TAP=off` if notification buttons are too much authority for your setup.
+  A leaked notification is scoped to the one approval it names — its token decides that
+  request and nothing else
 - treat the audit log (`GET /v1/approvals/:id/events`) as the record of truth and
   export it if you need retention beyond the Durable Object
